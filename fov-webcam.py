@@ -1,7 +1,9 @@
 import sys
+
+import cv2
 import numpy as np
 import numpy.ma as ma
-import cv2
+import pyrealsense2 as rs
 
 # CONSTANTS
 M_TO_F = 3.28084
@@ -41,20 +43,20 @@ class MaskWidget():
         n = len(self.coordinates)
         if n == 1:
             cv2.line(image, self.coordinates[0], self.coordinates[0],
-                     color=(255, 255, 255), thickness=3)
+                     color=(38, 37, 37), thickness=3)
         elif n == 2:
             cv2.line(image, self.coordinates[0], self.coordinates[1],
-                     color=(255, 255, 255), thickness=2)
+                     color=(38, 37, 37), thickness=2)
         elif n > 2:
             for i in range(n - 1):
                 cv2.line(image, self.coordinates[i], self.coordinates[i+1],
-                         color=(255, 255, 255), thickness=2)
+                         color=(38, 37, 37), thickness=2)
 
     def coordinate_valid(self, x, y):
         '''
         Method to check if coordinated are valid
         '''
-        if x <= 639 and x >= 0:
+        if x <= 847 and x >= 0:
             if y <= 479 and y >= 0:
                 return True
         else:
@@ -118,15 +120,23 @@ class MaskWidget():
 
 def main():
     try:
+        # Create/open file to output mask
+        file = open('mask-output.txt', 'w')
+        file.write(
+            "Copy this into RealSenseOPC Client Application configuration file")
+        file.write('\n')
+        file.close()
+        
         cv2.namedWindow('RealSense FOV Utility', cv2.WINDOW_AUTOSIZE)
         mask_widget = MaskWidget()
         video = cv2.VideoCapture(0)
-        blank_image = np.zeros((480, 640))
+        blank_image = np.zeros((480, 848))
 
         while True:
 
             # Wait for a coherent pair of frames: depth and color
             ret, video_frame = video.read()
+            video_frame = cv2.resize(video_frame, (848, 480))
             
             cv2.setMouseCallback('RealSense FOV Utility',
                                  mask_widget.get_coordinates)
@@ -139,7 +149,6 @@ def main():
             elif key == ord('y'):
                 mask_widget.redo()
             elif key == ord('q'):
-                # pipeline.stop(config)
                 cv2.destroyAllWindows()
                 sys.exit(0)
 
@@ -147,6 +156,16 @@ def main():
             poly = mask_widget.polygon()
 
             if poly is not False:
+                # Write polygon vertices to file
+                write_to_file = True
+                if write_to_file:
+                    file = open('mask-output.txt', 'w')
+                    file.write(
+                        "Copy this into RealSenseOPC Client Application configuration file")
+                    file.write('\n')
+                    file.write(str(mask_widget.coordinates))
+                    file.close()
+                    write_to_file = False
                 # Compute mask from user polygon coordinates
                 mask = cv2.fillPoly(blank_image, pts=[poly], color=1)
                 mask = mask.astype('bool')
@@ -167,19 +186,19 @@ def main():
                 text_pos = mask_widget.text_coordinate(len(str(ROI_depth)))
 
                 cv2.putText(video_frame, f'{ROI_depth:0.2f}',
-                            (text_pos), font, 1, (255, 255, 255), 2, cv2.LINE_AA)
+                            (text_pos), font, 1, (38, 37, 37), 2, cv2.LINE_AA)
                 cv2.imshow('RealSense FOV Utility', video_frame)
                 cv2.setWindowTitle('RealSense FOV Utility',
                                    f'RealSense FOV Utility   '
                                    f'ROI Depth: {ROI_depth:0.4f} (feet)')
             else:
+                write_to_file = False
                 cv2.imshow('RealSense FOV Utility', video_frame)
                 cv2.setWindowTitle('RealSense FOV Utility',
                                    'RealSense FOV Utility')
-                blank_image = np.zeros((480, 640))
+                blank_image = np.zeros((480, 848))
                 
             # Display color image
-            key = cv2.waitKey(1)
 
     finally:
 
