@@ -3,7 +3,6 @@ import sys
 import cv2
 import numpy as np
 import numpy.ma as ma
-import pyrealsense2 as rs
 
 # CONSTANTS
 M_TO_F = 3.28084
